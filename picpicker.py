@@ -26,7 +26,9 @@ from PySide6.QtWidgets import (QApplication,
                                QGroupBox,
                                QProgressBar)
 from PySide6.QtCore import (Signal, 
-                            Slot)
+                            Slot,
+                            QRunnable,
+                            Qth)
 from PySide6.QtGui import (QPixmap, 
                            QImage, 
                            QScreen, 
@@ -469,7 +471,7 @@ class PicPicker(QMainWindow):
     @Slot()
     def open_folder_dialog(self):
         # TODO enlever le chemin vers ./data
-        folder_path = QFileDialog.getExistingDirectory(self, "Open Folder")
+        folder_path = QFileDialog.getExistingDirectory(self, "Open Folder", "/home/thomas/Workspace/picpicker/data/save")
         if folder_path:
             # Emettre le signal avec le chemin du dossier sélectionné
             self.folder_path = folder_path
