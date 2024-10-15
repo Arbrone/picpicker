@@ -18,7 +18,7 @@ from PySide6.QtWidgets import (QApplication,
 from PySide6.QtGui import (QScreen, 
                            QShortcut)
 
-class MainWindow(QMainWindow):
+class PicPicker(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("PicPicker")
