@@ -20,6 +20,8 @@ python3 picpicker/main.py
 
 With PicPicker, you can easily choose which format to view, make your selections, and effortlessly sort them into different directories—all in one seamless process.
 
+![demo](assets/demo.gif)
+
 ---
 
 ## TODO
