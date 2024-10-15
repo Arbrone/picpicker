@@ -26,7 +26,7 @@ class FolderOpenerWidget(QWidget):
     @Slot()
     def open_folder_dialog(self):
         # TODO enlever le chemin vers ./data
-        folder_path = QFileDialog.getExistingDirectory(self, "Open Folder", "/home/thomas/Workspace/picpicker/data/save")
+        folder_path = QFileDialog.getExistingDirectory(self, "Open Folder")
         self.signals.result.emit(folder_path)
 
 class FolderOpenerSignals(QObject):
