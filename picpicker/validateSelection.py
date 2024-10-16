@@ -1,7 +1,8 @@
 from pathlib import Path
 import shutil
-from PySide6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QLineEdit, QPushButton, QLabel
-from PySide6.QtCore import Slot
+from PySide6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QLineEdit, QPushButton, QLabel, QFileDialog
+from PySide6.QtCore import Qt, Slot
+from PySide6.QtGui import QShortcut
 
 class ValidateSelectionWidget(QWidget):
     def __init__(self, folder_path, images_selection):
@@ -13,7 +14,7 @@ class ValidateSelectionWidget(QWidget):
 
         # Configuration de la fenêtre
         self.setWindowTitle("Validation")
-        self.setGeometry(300, 300, 400, 150)
+        self.setGeometry(300, 300, 600, 200)
 
         # Layout principal vertical
         main_layout = QVBoxLayout()
@@ -24,6 +25,7 @@ class ValidateSelectionWidget(QWidget):
         # Label et QLineEdit pour "select"
         select_label = QLabel("Selected:")
         self.select_line_edit = QLineEdit()
+        self.select_line_edit.setReadOnly(True)
         self.select_line_edit.setText(str(self.selected_folder_path))
 
         # Bouton pour changer de répertoire "select"
@@ -41,6 +43,7 @@ class ValidateSelectionWidget(QWidget):
         # Label et QLineEdit pour "rejected"
         rejected_label = QLabel("Rejected:")
         self.rejected_line_edit = QLineEdit()
+        self.rejected_line_edit.setReadOnly(True)
         self.rejected_line_edit.setText(str(self.rejected_folder_path))
 
         # Bouton pour changer de répertoire "rejected"
@@ -64,13 +67,21 @@ class ValidateSelectionWidget(QWidget):
         # Appliquer la disposition à la fenêtre
         self.setLayout(main_layout)
 
+        # ---- Shortcuts ----
+        self.close_shortcut = QShortcut(Qt.Key.Key_Escape, self)
+        self.close_shortcut.activated.connect(self.close)
+
     @Slot()
     def set_new_directory(self, selection:str):
-        print("set_new_directory")
         new_folder_path = QFileDialog.getExistingDirectory(self, "Select Folder")
+
+        if not new_folder_path:
+            return
+
         if selection == "selected":
             self.selected_folder_path = Path(new_folder_path)
             line_edit = self.select_line_edit
+
         else:
             self.rejected_folder_path = Path(new_folder_path)        
             line_edit = self.rejected_line_edit
