@@ -22,7 +22,8 @@ class PicPicker(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("PicPicker")
-        self.resize(1600, 900)
+        self.setGeometry(0, 0, 1600, 900)
+        self.center_window()
 
         self.folder_path = None
         self.images_path = None
@@ -110,6 +111,13 @@ class PicPicker(QMainWindow):
         self.reject_shortcut = QShortcut(Qt.Key.Key_Down, self.image_widget.photo_label)
         self.reject_shortcut.activated.connect(self.reject_image)
 
+    def center_window(self):
+        center = QScreen.availableGeometry(QApplication.primaryScreen()).center()
+        geo = self.frameGeometry()
+        geo.moveCenter(center)
+        self.move(geo.topLeft())
+
+
     def set_left_panel_state(self, state:bool):
         for i in range(self.left_panel.count()):
             widget = self.left_panel.itemAt(i).widget()
@@ -120,7 +128,6 @@ class PicPicker(QMainWindow):
             widget = self.selection_image_layout.itemAt(i).widget()
             if widget is not None:
                 widget.setEnabled(state)
-
 
     # Check state of checkbox and set self.visible_images_path accordingly
     def set_visible_images_path(self, format):
@@ -144,6 +151,7 @@ class PicPicker(QMainWindow):
         self.current_image_index = self.visible_images_path.index(image_path)
         self.image_widget.show_image(image_path, width, height)
         self.stacked_widget.setCurrentIndex(self.stacked_widget.currentIndex() + 1)
+        self.toggle_selection(image_path)
 
     @Slot(str)
     def folder_path_callback(self, folder_path):
@@ -229,5 +237,8 @@ class PicPicker(QMainWindow):
     @Slot()
     def validate_selection(self):
         # TODO case if images_selection is empty
-        self.validate = ValidateSelectionWidget(self.folder_path, self.images_selection)
-        self.validate.show()
+        if not self.images_selection["selected"] and not self.images_selection["rejected"]:
+            print("Images selection is empty")
+        else:
+            self.validate = ValidateSelectionWidget(self.folder_path, self.images_selection)
+            self.validate.show()
