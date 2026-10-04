@@ -25,6 +25,24 @@ Each RAF + JPG pair with the same name counts as one shot, so a mark always appl
 
 | Key | Viewer / compare | Grid |
 |---|---|---|
+| ← / → | previous / next shot (bursts included) | navigate |
+| Shift+← / → or PgUp / PgDn | skip the rest of a burst | |
+| ↑ or S / ↓ or X | select / reject, then go to the next shot | S / X mark the selection |
+| Space | clear mark | clear mark |
+| 1–5 / 0 | star rating / no rating | same |
+| 6–9 | red / yellow / green / blue label (toggle) | same |
+| K | keep this frame, reject the rest of the burst | |
+| C | compare | compare selection or burst |
+| Wheel, + / − | zoom (around the cursor) | thumbnail size (Ctrl+wheel) |
+| Z, double-click | fit ↔ 100% on the AF point (drag to pan) | |
+| F / R | show AF point / rotate | |
+| Esc | leave zoom, compare, viewer | |
+| H or ? | all shortcuts | all shortcuts |
+| Ctrl+Z / Tab / F11 / Ctrl+O | undo / side panel / full screen / open folder | same |
+
+The number-row keys work by physical position, so on AZERTY you don't need Shift. A filmstrip under the viewer shows where you are, with bursts underlined; click it to jump. Recent folders appear on the start page, and you can also drop a folder onto the window.
+
+---|---|---|
 | ← / → | previous / next | navigate |
 | ↑ or S / ↓ or X | select / reject, then go to the next shot | S / X mark the selection |
 | Space | clear mark | clear mark |

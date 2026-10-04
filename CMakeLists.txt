@@ -24,6 +24,7 @@ add_executable(picpicker
     src/ViewerWidget.cpp
     src/ApplyDialog.cpp
     src/CompareWidget.cpp
+    src/Filmstrip.cpp
     src/Metadata.cpp
     src/Xmp.cpp
     resources.qrc

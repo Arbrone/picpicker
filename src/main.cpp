@@ -6,6 +6,7 @@
 int main(int argc, char *argv[])
 {
     QApplication app(argc, argv);
+    QApplication::setOrganizationName("picpicker");
     QApplication::setApplicationName("picpicker");
     QApplication::setWindowIcon(QIcon(":/logo.png"));
 

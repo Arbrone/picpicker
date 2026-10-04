@@ -79,5 +79,5 @@ void ThumbDelegate::paint(QPainter *p, const QStyleOptionViewItem &option, const
 
 QSize ThumbDelegate::sizeHint(const QStyleOptionViewItem &, const QModelIndex &) const
 {
-    return {CellWidth, CellHeight};
+    return cellSize();
 }

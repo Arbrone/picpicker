@@ -75,12 +75,12 @@ public:
     void setStackBursts(bool stack);
     bool stackBursts() const { return m_stack; }
     void refresh();
+    bool accepts(const Shot &shot) const; // the mark / rating filters, ignoring stacking
 
 protected:
     bool filterAcceptsRow(int sourceRow, const QModelIndex &sourceParent) const override;
 
 private:
-    bool passes(const Shot &shot) const;
     template<typename F> void change(F f);
 
     Filter m_filter = All;

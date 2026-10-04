@@ -264,7 +264,7 @@ void ShotFilter::setMinRating(int rating) { change([&] { m_minRating = rating; }
 void ShotFilter::setStackBursts(bool stack) { change([&] { m_stack = stack; }); }
 void ShotFilter::refresh() { change([] {}); }
 
-bool ShotFilter::passes(const Shot &s) const
+bool ShotFilter::accepts(const Shot &s) const
 {
     if (s.rating < m_minRating) return false;
     switch (m_filter) {
@@ -279,14 +279,14 @@ bool ShotFilter::filterAcceptsRow(int sourceRow, const QModelIndex &) const
 {
     const auto *model = static_cast<const ShotModel *>(sourceModel());
     const Shot &s = model->shot(sourceRow);
-    if (!m_stack || s.burst < 0) return passes(s);
+    if (!m_stack || s.burst < 0) return accepts(s);
 
     // Stack cover: the first selected frame, else the first unrejected one, among frames that pass.
     int cover = -1;
     int rank = 3;
     for (int row : model->burstRows(s.burst)) {
         const Shot &f = model->shot(row);
-        if (!passes(f)) continue;
+        if (!accepts(f)) continue;
         const int r = f.mark == Mark::Selected ? 0 : f.mark == Mark::None ? 1 : 2;
         if (r < rank) {
             rank = r;

@@ -21,9 +21,9 @@ CompareWidget::CompareWidget(QWidget *parent)
             emit paneClicked(i);
         });
         // Mirror zoom and panning onto the other panes.
-        connect(pane, &ViewerWidget::zoomChanged, this, [this, i](bool zoomed, QPointF center) {
+        connect(pane, &ViewerWidget::zoomChanged, this, [this, i](qreal scale, QPointF center) {
             for (int j = 0; j < m_count; ++j)
-                if (j != i) m_panes[j]->setZoomed(zoomed, center);
+                if (j != i) m_panes[j]->setZoom(scale, center);
             emit zoomChanged();
         });
         connect(pane, &ViewerWidget::panned, this, [this, i](QPointF delta) {
@@ -61,7 +61,7 @@ bool CompareWidget::anyZoomed() const
 
 void CompareWidget::unzoom()
 {
-    for (ViewerWidget *pane : m_panes) pane->setZoomed(false, {});
+    for (ViewerWidget *pane : m_panes) pane->setZoom(0, {0.5, 0.5});
 }
 
 void CompareWidget::keyPressEvent(QKeyEvent *event)
@@ -80,6 +80,11 @@ void CompareWidget::keyPressEvent(QKeyEvent *event)
         // Each pane zooms on its own AF point: the subject may have moved between frames.
         if (anyZoomed()) unzoom();
         else for (int i = 0; i < m_count; ++i) m_panes[i]->toggleZoom();
+        emit zoomChanged();
+        break;
+    case Action::ZoomIn:
+    case Action::ZoomOut:
+        for (int i = 0; i < m_count; ++i) m_panes[i]->zoomStep(a.action == Action::ZoomIn ? 1 : -1);
         emit zoomChanged();
         break;
     case Action::Back:
