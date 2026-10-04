@@ -68,6 +68,7 @@ private:
     void updateCounts();
     void setShowFocus(bool show);
     void setThumbWidth(int width);
+    void retainVisibleThumbnails();
     void toggleHelp();
     void toast(const QString &text, const QColor &color = Qt::white);
 

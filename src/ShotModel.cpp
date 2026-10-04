@@ -40,6 +40,14 @@ ShotModel::ShotModel(ImageLoader *loader, QObject *parent)
 
 void ShotModel::load(const QString &folder)
 {
+    // Abandon a scan still running for the previous folder.
+    if (m_metaWatcher) {
+        m_metaWatcher->disconnect(this);
+        m_metaWatcher->cancel();
+        m_metaWatcher->deleteLater();
+        m_metaWatcher = nullptr;
+    }
+
     beginResetModel();
     m_loader->reset();
     m_folder = folder;
@@ -69,11 +77,43 @@ void ShotModel::load(const QString &folder)
         m_rowByPath.insert(m_shots[i].displayPath(), i);
     }
 
-    QtConcurrent::blockingMap(m_shots, [](Shot &s) { s.meta = readMetadata(s.jpgPath, s.rafPath); });
-    groupBursts();
     loadSession();
     endResetModel();
     emit changed();
+
+    // Reading EXIF touches every file: on a memory card or a cold disk that takes seconds, so it
+    // runs in the background. Only the file paths go to the worker threads.
+    QVector<QPair<QString, QString>> paths;
+    paths.reserve(m_shots.size());
+    for (const Shot &s : std::as_const(m_shots)) paths.append({s.jpgPath, s.rafPath});
+    m_metaDone = 0;
+    m_metaWatcher = new QFutureWatcher<Metadata>(this);
+    connect(m_metaWatcher, &QFutureWatcher<Metadata>::resultsReadyAt, this, &ShotModel::metadataReady);
+    connect(m_metaWatcher, &QFutureWatcher<Metadata>::finished, this, [this] {
+        groupBursts();
+        if (!m_shots.isEmpty()) emit dataChanged(index(0), index(m_shots.size() - 1), {BurstSizeRole, BurstIndexRole});
+        m_metaWatcher->deleteLater();
+        m_metaWatcher = nullptr;
+        emit changed();
+        emit metadataFinished();
+    });
+    m_metaWatcher->setFuture(QtConcurrent::mapped(paths, [](const QPair<QString, QString> &p) {
+        return readMetadata(p.first, p.second);
+    }));
+}
+
+bool ShotModel::metadataLoading() const
+{
+    return m_metaWatcher != nullptr;
+}
+
+void ShotModel::metadataReady(int begin, int end)
+{
+    for (int i = begin; i < end; ++i) m_shots[i].meta = m_metaWatcher->resultAt(i);
+    m_metaDone += end - begin;
+    // The EXIF thumbnail is now available as a placeholder for these rows.
+    emit dataChanged(index(begin), index(end - 1), {Qt::DecorationRole});
+    emit metadataProgress(m_metaDone, m_shots.size());
 }
 
 void ShotModel::groupBursts()
@@ -109,7 +149,8 @@ QVariant ShotModel::data(const QModelIndex &index, int role) const
     const Shot &s = m_shots[index.row()];
     switch (role) {
     case Qt::DisplayRole: return s.stem;
-    case Qt::DecorationRole: return m_loader->thumbnail(s);
+    // Rows higher up the grid load first.
+    case Qt::DecorationRole: return m_loader->thumbnail(s, -index.row());
     case MarkRole: return int(s.mark);
     case RatingRole: return s.rating;
     case LabelRole: return int(s.label);

@@ -22,6 +22,7 @@
 #include <QMimeData>
 #include <QPointer>
 #include <QPushButton>
+#include <QScrollBar>
 #include <QSettings>
 #include <QShortcut>
 #include <QStackedWidget>
@@ -121,6 +122,14 @@ MainWindow::MainWindow(QWidget *parent)
     m_grid->installEventFilter(this);
     m_grid->viewport()->installEventFilter(this);
     connect(m_grid, &QListView::activated, this, &MainWindow::openViewer);
+    // While scrolling, regularly drop queued thumbnails that are no longer near the screen.
+    auto *retainTimer = new QTimer(this);
+    retainTimer->setSingleShot(true);
+    retainTimer->setInterval(60);
+    connect(retainTimer, &QTimer::timeout, this, &MainWindow::retainVisibleThumbnails);
+    connect(m_grid->verticalScrollBar(), &QScrollBar::valueChanged, retainTimer, [retainTimer] {
+        if (!retainTimer->isActive()) retainTimer->start(); // throttle, don't debounce
+    });
 
     // Viewer
     m_viewer = new ViewerWidget;
@@ -207,6 +216,10 @@ MainWindow::MainWindow(QWidget *parent)
         // Marks can change which frame covers a stacked burst.
         if (m_filter->stackBursts()) m_filter->refresh();
     });
+    connect(m_model, &ShotModel::metadataProgress, this, [this](int done, int total) {
+        statusBar()->showMessage(tr("Reading photo info… %1 / %2").arg(done).arg(total));
+    });
+    connect(m_model, &ShotModel::metadataFinished, this, [this] { statusBar()->clearMessage(); });
     connect(m_model, &ShotModel::xmpSkipped, this, [this](const QString &path) {
         statusBar()->showMessage(tr("%1 was not written: it belongs to another application or is read-only")
                                      .arg(QFileInfo(path).fileName()), 6000);
@@ -425,6 +438,29 @@ bool MainWindow::eventFilter(QObject *watched, QEvent *event)
         return gridAction(a);
     }
     return QMainWindow::eventFilter(watched, event);
+}
+
+void MainWindow::retainVisibleThumbnails()
+{
+    if (m_filter->rowCount() == 0) return;
+    const QRect r = m_grid->viewport()->rect();
+    auto rowAt = [&](QPoint p, int fallback) {
+        const QModelIndex idx = m_grid->indexAt(p);
+        return idx.isValid() ? idx.row() : fallback;
+    };
+    const int count = m_filter->rowCount();
+    const int firstVisible = rowAt(r.topLeft() + QPoint(1, 1), 0);
+    const int lastVisible = rowAt(r.bottomRight() - QPoint(1, 1), count - 1);
+    // Keep half a screen of margin above and one below (you usually keep scrolling down).
+    const int first = rowAt(r.topLeft() - QPoint(0, r.height() / 2) + QPoint(1, 1), 0);
+    const int last = rowAt(r.bottomRight() + QPoint(0, r.height()) - QPoint(1, 1), count - 1);
+    auto shotAt = [&](int i) -> const Shot & { return m_model->shot(m_filter->mapToSource(m_filter->index(i, 0)).row()); };
+    QSet<QString> keep;
+    for (int i = first; i <= last; ++i) keep.insert(shotAt(i).displayPath());
+    m_loader->retainThumbnails(keep);
+    // What's on screen goes before the margin, top to bottom.
+    for (int i = firstVisible; i <= lastVisible; ++i)
+        m_loader->thumbnail(shotAt(i), ImageLoader::UrgentPriority / 2 - (i - firstVisible));
 }
 
 void MainWindow::setThumbWidth(int width)
@@ -649,7 +685,14 @@ void MainWindow::refreshViewer(bool newShot)
     m_viewer->setOverlay(overlayText(row, m_pos, m_rows.size()), shot.mark, shot.label);
     m_film->setRows(m_rows, m_pos);
 
-    // Prefetch the shots you're most likely to see next.
+    // Prefetch the shots you're most likely to see next, and drop queued decodes of shots you
+    // already skipped past (holding → would otherwise leave a backlog in front of this one).
+    QSet<QString> wanted{shot.stem};
+    for (int offset : {1, 2, 3, -1}) {
+        const int p = m_pos + offset;
+        if (p >= 0 && p < m_rows.size()) wanted.insert(m_model->shot(m_rows[p]).stem);
+    }
+    m_loader->retainPreviews(wanted);
     for (int offset : {1, 2, 3, -1}) {
         const int p = m_pos + offset;
         if (p >= 0 && p < m_rows.size()) m_loader->request(m_model->shot(m_rows[p]), false, 5 - std::abs(offset));
@@ -697,8 +740,12 @@ void MainWindow::refreshCompare()
         m_cmp.shown[i] = row;
     }
     m_film->setRows(m_cmp.rows, m_cmp.active, m_cmp.first, m_cmp.panes);
-    // Prefetch the next window.
-    for (int p = m_cmp.first + m_cmp.panes; p < std::min<int>(m_cmp.rows.size(), m_cmp.first + 2 * m_cmp.panes); ++p)
+    // Prefetch the next window; drop queued decodes for windows already passed.
+    const int prefetchEnd = std::min<int>(m_cmp.rows.size(), m_cmp.first + 2 * m_cmp.panes);
+    QSet<QString> wanted;
+    for (int p = m_cmp.first; p < prefetchEnd; ++p) wanted.insert(m_model->shot(m_cmp.rows[p]).stem);
+    m_loader->retainPreviews(wanted);
+    for (int p = m_cmp.first + m_cmp.panes; p < prefetchEnd; ++p)
         m_loader->request(m_model->shot(m_cmp.rows[p]), false, 3);
 }
 

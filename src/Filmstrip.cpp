@@ -68,7 +68,7 @@ void Filmstrip::paintEvent(QPaintEvent *)
         const Shot &shot = m_model->shot(m_rows[pos]);
         const QRect cell(int(x0 + pos * step), kGap, w, h);
         p.fillRect(cell, QColor(45, 45, 45));
-        const QImage thumb = m_loader->thumbnail(shot);
+        const QImage thumb = m_loader->thumbnail(shot, ImageLoader::UrgentPriority - std::abs(pos - m_current));
         if (!thumb.isNull()) {
             QRect target(QPoint(), thumb.size().scaled(cell.size(), Qt::KeepAspectRatio));
             target.moveCenter(cell.center());

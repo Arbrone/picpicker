@@ -3,6 +3,7 @@
 #include "Shot.h"
 
 #include <QAbstractListModel>
+#include <QFutureWatcher>
 #include <QHash>
 #include <QSortFilterProxyModel>
 #include <QVector>
@@ -21,9 +22,11 @@ public:
 
     explicit ShotModel(ImageLoader *loader, QObject *parent = nullptr);
 
-    // Scans the folder (non-recursive), pairs JPG/RAF by stem, reads EXIF, groups bursts and
-    // restores the saved session.
+    // Scans the folder (non-recursive), pairs JPG/RAF by stem and restores the saved session.
+    // Returns quickly: EXIF is then read on background threads, rows update as it arrives
+    // (metadataProgress), and bursts are grouped once everything is read (metadataFinished).
     void load(const QString &folder);
+    bool metadataLoading() const;
     QString folder() const { return m_folder; }
 
     int rowCount(const QModelIndex &parent = {}) const override;
@@ -44,6 +47,8 @@ public:
 
 signals:
     void changed();
+    void metadataProgress(int done, int total);
+    void metadataFinished();
     void xmpSkipped(const QString &path);
 
 private:
@@ -54,8 +59,11 @@ private:
     void saveSession() const;
     void loadSession();
     QString sessionFile() const;
+    void metadataReady(int begin, int end);
 
     ImageLoader *m_loader;
+    QFutureWatcher<Metadata> *m_metaWatcher = nullptr;
+    int m_metaDone = 0;
     QString m_folder;
     QVector<Shot> m_shots;
     QVector<QVector<int>> m_bursts;

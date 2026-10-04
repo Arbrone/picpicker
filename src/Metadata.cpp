@@ -39,6 +39,12 @@ public:
                     : quint32(p[0]) << 24 | quint32(p[1]) << 16 | quint32(p[2]) << 8 | quint32(p[3]);
     }
 
+    quint32 nextIfd(int base, quint32 offset) const
+    {
+        const int at = base + int(offset);
+        return u32(at + 2 + 12 * u16(at));
+    }
+
     // `base` is what offsets are relative to: the TIFF header, or the MakerNote start.
     Ifd ifd(int base, quint32 offset) const
     {
@@ -172,6 +178,16 @@ Metadata parse(const QByteArray &jpeg, bool withFocus)
     const Tiff t(jpeg, tiffStart, le);
     const Tiff::Ifd ifd0 = t.ifd(tiffStart, t.u32(tiffStart + 4));
     const int orientation = int(t.uint(ifd0, 0x0112).value_or(1));
+    meta.orientation = orientation;
+
+    // IFD1 holds the embedded thumbnail: JPEGInterchangeFormat / JPEGInterchangeFormatLength.
+    if (const quint32 ifd1Offset = t.nextIfd(tiffStart, t.u32(tiffStart + 4))) {
+        const Tiff::Ifd ifd1 = t.ifd(tiffStart, ifd1Offset);
+        const auto offset = t.uint(ifd1, 0x0201);
+        const auto length = t.uint(ifd1, 0x0202);
+        if (offset && length && *length < 256 * 1024 && tiffStart + qint64(*offset) + *length <= jpeg.size())
+            meta.exifThumb = jpeg.mid(tiffStart + int(*offset), int(*length));
+    }
     const auto exifOffset = t.uint(ifd0, 0x8769);
     if (!exifOffset) return meta;
     const Tiff::Ifd exif = t.ifd(tiffStart, *exifOffset);
@@ -213,6 +229,10 @@ Metadata readMetadata(const QString &jpgPath, const QString &rafPath)
         if (jpg.imageSize.isValid()) meta.imageSize = jpg.imageSize;
         if (meta.captureMs < 0) meta.captureMs = jpg.captureMs;
         if (meta.exposure.isEmpty()) meta.exposure = jpg.exposure;
+        if (meta.exifThumb.isEmpty()) {
+            meta.exifThumb = jpg.exifThumb;
+            meta.orientation = jpg.orientation;
+        }
     }
     return meta;
 }

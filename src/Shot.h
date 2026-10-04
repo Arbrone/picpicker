@@ -1,5 +1,6 @@
 #pragma once
 
+#include <QByteArray>
 #include <QPointF>
 #include <QSize>
 #include <QString>
@@ -14,6 +15,8 @@ struct Metadata {
     QString exposure;          // "1/250s  f/2.8  ISO 400  23mm"
     QSize imageSize;           // full size of the displayed image, after EXIF orientation
     QPointF focus{-1, -1};     // AF point, normalized to the displayed image (after orientation)
+    int orientation = 1;       // EXIF orientation of the image the metadata was read from
+    QByteArray exifThumb;      // the small JPEG thumbnail embedded in the EXIF (IFD1), ~9 KiB
     bool hasFocus() const { return focus.x() >= 0; }
 };
 
