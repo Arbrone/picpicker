@@ -15,10 +15,30 @@ cmake --build build -j
 ./build/picpicker /path/to/photos   # folder argument is optional
 ```
 
-Each RAF + JPG pair with the same name counts as one shot, so a mark always applies to both files. Marks are saved to `.picpicker.json` in the folder as you go. **Apply…** moves the files into `selected/` and `rejected/`, or sends rejected shots to the Trash if you tick that option.
+Each RAF + JPG pair with the same name counts as one shot, so a mark always applies to both files.
 
-| Key | Viewer | Grid |
+- **Bursts**: shots taken less than 1 s apart (EXIF time incl. sub-seconds) are stacked into one grid cell. Open it to go through its frames, or press **K** on the keeper to select it and reject the rest.
+- **Compare**: view 2–4 frames side by side with zoom and panning in sync. Press **C** on a burst, on a selection in the grid, or in the viewer.
+- **AF point**: the focus point recorded by the camera is drawn on the image, and **Z** zooms straight to it at 100%.
+- **Ratings and colour labels** are written to `<name>.xmp` sidecars, which Lightroom and Capture One read. Rejected shots get rating −1. PicPicker never overwrites a sidecar created by another app.
+- Marks are saved to `.picpicker.json` in the folder as you go. **Apply…** moves every file of a shot, including its sidecars, into `selected/` and `rejected/`, or sends rejected shots to the Trash.
+
+| Key | Viewer / compare | Grid |
 |---|---|---|
+| ← / → | previous / next | navigate |
+| ↑ or S / ↓ or X | select / reject, then go to the next shot | S / X mark the selection |
+| Space | clear mark | clear mark |
+| 1–5 / 0 | star rating / no rating | same |
+| 6–9 | red / yellow / green / blue label (toggle) | same |
+| Enter or B | open the burst | open |
+| K | keep this frame, reject the others | |
+| C | compare | compare selection or burst |
+| Z, double-click | 100% zoom on the AF point (drag to pan) | |
+| F / R | show AF point / rotate | |
+| Esc | back (leave zoom, burst, compare) | |
+| Ctrl+Z | undo last change | undo last change |
+
+---|---|---|
 | ← / → | previous / next | navigate |
 | ↑ or S / ↓ or X | select / reject, then go to the next shot | S / X mark the selection |
 | Space | clear mark | clear mark |

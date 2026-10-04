@@ -10,7 +10,7 @@ if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
     set(CMAKE_BUILD_TYPE Release CACHE STRING "Build type" FORCE)
 endif()
 
-find_package(Qt6 REQUIRED COMPONENTS Widgets)
+find_package(Qt6 REQUIRED COMPONENTS Widgets Concurrent)
 find_package(PkgConfig REQUIRED)
 # libraw_r is the thread-safe build; we decode on several worker threads.
 pkg_check_modules(LIBRAW REQUIRED IMPORTED_TARGET libraw_r)
@@ -23,8 +23,11 @@ add_executable(picpicker
     src/ThumbDelegate.cpp
     src/ViewerWidget.cpp
     src/ApplyDialog.cpp
+    src/CompareWidget.cpp
+    src/Metadata.cpp
+    src/Xmp.cpp
     resources.qrc
 )
 
-target_link_libraries(picpicker PRIVATE Qt6::Widgets PkgConfig::LIBRAW)
+target_link_libraries(picpicker PRIVATE Qt6::Widgets Qt6::Concurrent PkgConfig::LIBRAW)
 install(TARGETS picpicker RUNTIME DESTINATION bin)

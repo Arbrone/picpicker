@@ -3,7 +3,6 @@
 #include "Shot.h"
 
 #include <QCache>
-#include <QHash>
 #include <QImage>
 #include <QObject>
 #include <QSet>
@@ -29,9 +28,6 @@ public:
     // Schedule a decode without returning anything (used for prefetching).
     void request(const Shot &shot, bool fullRes, int priority);
 
-    // Exposure summary ("1/250s  f/2.8  ISO 400  23mm"), available after a preview was decoded.
-    QString info(const QString &stem) const { return m_info.value(stem); }
-
 signals:
     void thumbnailReady(const QString &path);
     void previewReady(const QString &stem, bool fullRes);
@@ -43,7 +39,6 @@ private:
     QThreadPool m_previewPool;
     QCache<QString, QImage> m_thumbs;    // key: display path, cost in KiB
     QCache<QString, QImage> m_previews;  // key: previewKey(), cost in KiB
-    QHash<QString, QString> m_info;
     QSet<QString> m_pendingThumbs;
     QSet<QString> m_pendingPreviews;
     int m_previewSide;
