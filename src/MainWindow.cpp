@@ -21,6 +21,7 @@
 #include <QDropEvent>
 #include <QMimeData>
 #include <QPointer>
+#include <QProgressBar>
 #include <QPushButton>
 #include <QScrollBar>
 #include <QSettings>
@@ -216,10 +217,43 @@ MainWindow::MainWindow(QWidget *parent)
         // Marks can change which frame covers a stacked burst.
         if (m_filter->stackBursts()) m_filter->refresh();
     });
-    connect(m_model, &ShotModel::metadataProgress, this, [this](int done, int total) {
-        statusBar()->showMessage(tr("Reading photo info… %1 / %2").arg(done).arg(total));
+    // Loading overlay: bursts, AF points and exposure are only complete once every file's
+    // metadata is read, so the window waits for it. The event loop keeps running meanwhile.
+    m_loading = new QWidget(this);
+    m_loading->setAttribute(Qt::WA_StyledBackground);
+    m_loading->setStyleSheet("background: rgba(15, 15, 15, 215); color: #eee;");
+    m_loadingLabel = new QLabel;
+    m_loadingLabel->setAlignment(Qt::AlignCenter);
+    m_loadingLabel->setStyleSheet("background: transparent; font-size: 13pt;");
+    m_loadingBar = new QProgressBar;
+    m_loadingBar->setFixedWidth(420);
+    m_loadingBar->setTextVisible(false);
+    auto *loadingLayout = new QVBoxLayout(m_loading);
+    loadingLayout->addStretch();
+    loadingLayout->addWidget(m_loadingLabel, 0, Qt::AlignCenter);
+    loadingLayout->addWidget(m_loadingBar, 0, Qt::AlignCenter);
+    loadingLayout->addStretch();
+    m_loading->hide();
+    centralWidget()->installEventFilter(this); // keep the overlay sized to the window
+    // Small folders finish in a few milliseconds: don't flash the overlay for those.
+    m_loadingDelay = new QTimer(this);
+    m_loadingDelay->setSingleShot(true);
+    m_loadingDelay->setInterval(150);
+    connect(m_loadingDelay, &QTimer::timeout, this, [this] {
+        m_loading->setGeometry(centralWidget()->geometry());
+        m_loading->show();
+        m_loading->raise();
     });
-    connect(m_model, &ShotModel::metadataFinished, this, [this] { statusBar()->clearMessage(); });
+
+    connect(m_model, &ShotModel::metadataProgress, this, [this](int done, int total) {
+        m_loadingLabel->setText(tr("Reading photo info… %1 / %2").arg(done).arg(total));
+        m_loadingBar->setRange(0, total);
+        m_loadingBar->setValue(done);
+    });
+    connect(m_model, &ShotModel::metadataFinished, this, [this] {
+        setLoading(false);
+        if (m_model->burstCount() > 0) toast(tr("%1 shots, %2 bursts").arg(m_model->count()).arg(m_model->burstCount()));
+    });
     connect(m_model, &ShotModel::xmpSkipped, this, [this](const QString &path) {
         statusBar()->showMessage(tr("%1 was not written: it belongs to another application or is read-only")
                                      .arg(QFileInfo(path).fileName()), 6000);
@@ -336,6 +370,7 @@ void MainWindow::openFolder(const QString &folder)
     m_pos = -1;
     m_cmp = {};
     m_model->load(path);
+    setLoading(m_model->metadataLoading());
     setWindowTitle(QStringLiteral("PicPicker — %1").arg(path));
 
     QSettings settings;
@@ -398,6 +433,21 @@ void MainWindow::toast(const QString &text, const QColor &color)
     m_toastTimer->start();
 }
 
+void MainWindow::setLoading(bool loading)
+{
+    // Disabling the central widget blocks mouse and keyboard input; the overlay isn't part of it.
+    centralWidget()->setEnabled(!loading);
+    if (loading) {
+        m_loadingLabel->setText(tr("Reading photo info…"));
+        m_loadingBar->setRange(0, 0);
+        m_loadingDelay->start();
+        return;
+    }
+    m_loadingDelay->stop();
+    m_loading->hide();
+    m_stack->currentWidget()->setFocus();
+}
+
 void MainWindow::toggleHelp()
 {
     if (m_help->isVisible()) {
@@ -415,6 +465,8 @@ void MainWindow::toggleHelp()
 
 bool MainWindow::eventFilter(QObject *watched, QEvent *event)
 {
+    if (watched == centralWidget() && event->type() == QEvent::Resize)
+        m_loading->setGeometry(centralWidget()->geometry());
     if (watched == m_grid->viewport() && event->type() == QEvent::Wheel) {
         auto *wheel = static_cast<QWheelEvent *>(event);
         if (wheel->modifiers() & Qt::ControlModifier) {
@@ -423,6 +475,7 @@ bool MainWindow::eventFilter(QObject *watched, QEvent *event)
         }
     }
     if (watched == m_grid && event->type() == QEvent::KeyPress) {
+        if (!m_grid->isEnabled()) return true; // the window is blocked while loading
         auto *key = static_cast<QKeyEvent *>(event);
         // Arrows, Enter and Esc keep their usual grid behaviour.
         switch (key->key()) {

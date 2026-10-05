@@ -15,6 +15,7 @@ class QLabel;
 class QListView;
 class QPushButton;
 class QStackedWidget;
+class QProgressBar;
 class QTimer;
 class QVBoxLayout;
 class ShotFilter;
@@ -70,6 +71,7 @@ private:
     void setThumbWidth(int width);
     void retainVisibleThumbnails();
     void toggleHelp();
+    void setLoading(bool loading);
     void toast(const QString &text, const QColor &color = Qt::white);
 
     QImage bestImage(const Shot &shot, bool zoomed);
@@ -100,6 +102,10 @@ private:
     QLabel *m_toast;
     QTimer *m_toastTimer;
     QLabel *m_help;
+    QWidget *m_loading;          // blocks the window while the folder's metadata is read
+    QLabel *m_loadingLabel;
+    QProgressBar *m_loadingBar;
+    QTimer *m_loadingDelay;
     QPushButton *m_applyButton;
 
     // Viewer navigation over a snapshot of source rows, so marking a shot under an active
