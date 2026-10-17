@@ -437,6 +437,8 @@ void MainWindow::setLoading(bool loading)
 {
     // Disabling the central widget blocks mouse and keyboard input; the overlay isn't part of it.
     centralWidget()->setEnabled(!loading);
+    // Sharp thumbnails would compete with the scan for the disk; the grid is hidden anyway.
+    m_loader->setThumbnailsPaused(loading);
     if (loading) {
         m_loadingLabel->setText(tr("Reading photo info…"));
         m_loadingBar->setRange(0, 0);
@@ -445,6 +447,7 @@ void MainWindow::setLoading(bool loading)
     }
     m_loadingDelay->stop();
     m_loading->hide();
+    m_grid->viewport()->update(); // queues the sharp thumbnails for what's on screen
     m_stack->currentWidget()->setFocus();
 }
 

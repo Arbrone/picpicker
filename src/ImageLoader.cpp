@@ -234,6 +234,8 @@ QImage ImageLoader::thumbnail(const Shot &shot, int priority)
         m_lowRes.insert(path);
     }
 
+    if (m_thumbsPaused) return current;
+
     const int generation = m_generation;
     schedule(m_thumbPool, m_thumbJobs, path, priority, [this, shot, path, generation](Job *job) {
         const QString cacheFile = diskCacheFile(path);

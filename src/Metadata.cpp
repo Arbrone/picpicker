@@ -10,7 +10,10 @@
 
 namespace {
 
-constexpr int kHeadSize = 256 * 1024; // EXIF APP1 is at most 64 KiB and comes first in camera JPEGs
+// Camera JPEGs start with the Exif APP1 segment, which is at most 64 KiB. Reading only that much
+// matters: the folder scan reads every file, and it's limited by the disk, not the CPU.
+constexpr int kFirstRead = 64 * 1024;
+constexpr int kMaxHead = 512 * 1024;
 
 // Bounds-checked view over a TIFF structure.
 class Tiff {
@@ -110,7 +113,25 @@ QByteArray readJpegHead(const QString &path, bool raf)
         const quint32 offset = quint32(p[0]) << 24 | p[1] << 16 | p[2] << 8 | p[3];
         if (!file.seek(offset)) return {};
     }
-    return file.read(kHeadSize);
+    QByteArray data = file.read(kFirstRead);
+
+    // Walk the segments up to the Exif one and read more if it doesn't fit (e.g. an APP0 first).
+    auto ensure = [&](int size) {
+        if (size > data.size() && size <= kMaxHead) data += file.read(size - data.size());
+        return size <= data.size();
+    };
+    int p = 2;
+    while (ensure(p + 4) && uchar(data[p]) == 0xFF) {
+        const int marker = uchar(data[p + 1]);
+        const int end = p + 2 + (uchar(data[p + 2]) << 8 | uchar(data[p + 3]));
+        if (marker == 0xDA) break; // start of scan: no more metadata
+        if (marker == 0xE1 && ensure(p + 10) && data.mid(p + 4, 6) == QByteArray("Exif\0\0", 6)) {
+            ensure(end);
+            break;
+        }
+        p = end;
+    }
+    return data;
 }
 
 // Returns the offset of the TIFF header inside the JPEG's Exif APP1 segment, or -1.

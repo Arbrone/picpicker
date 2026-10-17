@@ -38,6 +38,10 @@ public:
     // Cancel queued (not yet started) jobs for anything not in the set: what scrolled out of
     // view, or shots you skipped past. Running jobs finish, since a decode can't be interrupted.
     void retainThumbnails(const QSet<QString> &displayPaths);
+
+    // While paused, thumbnail() only returns what it has (cache or EXIF placeholder) and queues
+    // nothing, leaving the disk to the folder scan. Repaint after resuming to queue the rest.
+    void setThumbnailsPaused(bool paused) { m_thumbsPaused = paused; }
     void retainPreviews(const QSet<QString> &stems);
 
 signals:
@@ -63,5 +67,6 @@ private:
     QHash<QString, Job *> m_previewJobs; // queued or running, by previewKey()
     int m_previewSide;
     int m_generation = 0;
+    bool m_thumbsPaused = false;
     QString m_cacheDir;
 };
